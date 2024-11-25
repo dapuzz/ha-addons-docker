@@ -1,13 +1,9 @@
-ARG BUILD_FROM
-FROM $BUILD_FROM
-
-RUN apk add --no-cache git npm
+FROM node:alpine
 
 COPY . /
-RUN chmod a+x /run.sh
-RUN chmod a+x /finish.sh
+RUN apk update && apk upgrade && \
+    apk add --no-cache bash git openssh
+RUN cd /Baileys && npm update && npm i -f && cd .. && npm install -f
 
-RUN cd /Baileys && npm i -f && cd .. && npm install -f
-
-EXPOSE 3000
-CMD [ "/run.sh" ]
+EXPOSE 8124
+CMD [ "node", "index.js" ]

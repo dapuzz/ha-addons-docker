@@ -6,12 +6,33 @@ const fs = require("fs");
 const { WhatsappClient } = require("./whatsapp");
 
 var logger = require("log4js").getLogger();
-logger.level = "info";
+logger.level = "debug";
 
 var qrimage = require("qr-image");
 
 const app = express();
-const port = 3000;
+const port = 8124;
+var haPort = process.env.HA_PORT;
+var hostnameID = process.env.HOSTNAME_ID;
+var token = process.env.TOKEN;
+var apiUrl;
+
+if (!(hostnameID)){
+	apiUrl = "supervisor/core";
+} else {
+	if (haPort) {
+		apiUrl = `${hostnameID}:${haPort}`;
+	} else {
+		apiUrl = `${hostnameID}:8123`;
+	}
+}
+
+if (!(token)){
+	token = process.env.SUPERVISOR_TOKEN;
+}
+
+logger.info(apiUrl, "is the API URL.");
+logger.info(token, "is the token.");
 
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -22,13 +43,13 @@ const clients = {};
 const onReady = (key) => {
   logger.info(key, "client is ready.");
   axios.post(
-    "http://supervisor/core/api/services/persistent_notification/dismiss",
+    `http://${apiUrl}/api/services/persistent_notification/dismiss`,
     {
       notification_id: `whatsapp_addon_qrcode_${key}`,
     },
     {
       headers: {
-        Authorization: `Bearer ${process.env.SUPERVISOR_TOKEN}`,
+        Authorization: `Bearer ${token}`,
       },
     }
   );
@@ -45,7 +66,7 @@ const onQr = (qr, key) => {
   code.on("readable", function () {
     var img_string = code.read().toString("base64");
     axios.post(
-      "http://supervisor/core/api/services/persistent_notification/create",
+      `http://${apiUrl}/api/services/persistent_notification/create`,
       {
         title: `Whatsapp QRCode (${key})`,
         message: `Please scan the following QRCode for **${key}** client... ![QRCode](data:image/png;base64,${img_string})`,
@@ -53,7 +74,7 @@ const onQr = (qr, key) => {
       },
       {
         headers: {
-          Authorization: `Bearer ${process.env.SUPERVISOR_TOKEN}`,
+          Authorization: `Bearer ${token}`,
         },
       }
     );
@@ -62,11 +83,11 @@ const onQr = (qr, key) => {
 
 const onMsg = (msg, key) => {
   axios.post(
-    "http://supervisor/core/api/events/new_whatsapp_message",
+    `http://${apiUrl}/api/events/new_whatsapp_message`,
     { clientId: key, ...msg },
     {
       headers: {
-        Authorization: `Bearer ${process.env.SUPERVISOR_TOKEN}`,
+        Authorization: `Bearer ${token}`,
       },
     }
   );
@@ -75,11 +96,11 @@ const onMsg = (msg, key) => {
 
 const onPresenceUpdate = (presence, key) => {
   axios.post(
-    "http://supervisor/core/api/events/whatsapp_presence_update",
+    `http://${apiUrl}/api/events/whatsapp_presence_update`,
     { clientId: key, ...presence },
     {
       headers: {
-        Authorization: `Bearer ${process.env.SUPERVISOR_TOKEN}`,
+        Authorization: `Bearer ${token}`,
       },
     }
   );
